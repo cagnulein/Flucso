@@ -201,7 +201,7 @@ public class FFService extends IntentService implements OnSharedPreferenceChange
                 if(likes || comments > 0) {
                 	String r;
                 	if(comments > 1 || (comments == 0 && likes)) {
-                		r = R.string.notif_cm_new + " " + e.body;
+                		r = getResources().getString(R.string.notif_cm_new) + " " + e.body;
                 	} else {
                 		r = e.comments.get(0).body;
                 	}
