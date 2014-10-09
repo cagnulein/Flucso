@@ -188,13 +188,29 @@ public class FFService extends IntentService implements OnSharedPreferenceChange
             Feed data = FFAPI.client_feed(session).get_feed_updates("filter/discussions", 50, cursor_discussions, 0, 1);
             cursor_discussions = data.realtime.cursor;
             for (Entry e : data.entries) {
-                if(e.from.isMe() == false || e.comments.size() > 0 || e.likes.size() > 0) {
+            	boolean likes = (e.likes.size() > 0);
+            	int comments = 0;
+            	if(e.comments.size() > 0) {
+            		for(Comment c : e.comments) {
+            			if(c.from.isMe() == false) {
+            				comments++;
+            			}
+            		}
+            	}
+
+                if(likes || comments > 0) {
+                	String r;
+                	if(comments > 1 || (comments == 0 && likes)) {
+                		r = R.string.notif_cm_new + " " + e.body;
+                	} else {
+                		r = e.comments.get(0).body;
+                	}
+
                     PendingIntent rpi = PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class).setAction(DSC_BASE_NOTIF),
                             PendingIntent.FLAG_UPDATE_CURRENT);
                     NotificationCompat.Builder ncb = new NotificationCompat.Builder(this).setSmallIcon(
-                            R.drawable.ic_launcher).setContentTitle(getResources().getString(R.string.app_name)).setContentText(
-                            e.comments.size() > 1 ? R.string.notif_cm_new + " " + e.body : e.comments.get(0).body).setAutoCancel(true)
-                            .setContentIntent(rpi);
+                            R.drawable.ic_launcher).setContentTitle(getResources().getString(R.string.app_name)).setContentText(r)
+                    		.setAutoCancel(true).setContentIntent(rpi);
                     NotificationManager nmg = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
 
                     boolean found = false;
