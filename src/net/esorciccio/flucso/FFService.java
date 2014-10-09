@@ -206,36 +206,51 @@ public class FFService extends IntentService implements OnSharedPreferenceChange
             	}
 
                 if(likes > 0 || comments > 0) {
-                	String r;
-                	if(comments > 1 || (comments == 0 && likes > 0)) {
-                		r = getResources().getString(R.string.notif_cm_new) + " " + e.body;
-                	} else {
-                		r = e.comments.get(0).body;
-                	}
+                	String r = "";
+                    boolean found = false;
+                    DiscussionNotification n = new DiscussionNotification(e.hashCode(),e.id);
+
+                	if (cmnotf == 1) {
+	                	if(comments > 1 || (comments == 0 && likes > 0)) {
+	                		r = getResources().getString(R.string.notif_cm_new) + " " + e.body;
+	                	} else {
+	                		r = e.comments.get(0).body;
+	                	}
+
+	                    if(discussionNotifications.size() > 0) {
+	                        for (DiscussionNotification nn : discussionNotifications) {
+	                            if (nn.idthread.equals(n.idthread)) {
+	                                n.idnotification = nn.idnotification;
+	                                found = true;
+	                                break;
+	                            }
+	                        }
+	                    }
+	                    if(!found) {
+	                        discussionNotifications.add(n);
+	                    }	                	
+	                } else if(cmnotf == 2) {
+	                	r = getResources().getString(R.string.notif_cms_new);
+
+	                	if(discussionNotifications.size() > 0) {
+	                		n.idnotification = discussionNotifications.get(0).idnotification;
+	                	} else {
+	                		discussionNotifications.add(n);
+	                	}
+	                }
 
                     PendingIntent rpi = PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class).setAction(DSC_BASE_NOTIF),
                             PendingIntent.FLAG_UPDATE_CURRENT);
                     NotificationCompat.Builder ncb = new NotificationCompat.Builder(this).setSmallIcon(
                             R.drawable.ic_launcher).setContentTitle(getResources().getString(R.string.app_name)).setContentText(r)
                     		.setAutoCancel(true).setContentIntent(rpi);
-                    NotificationManager nmg = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-
-                    boolean found = false;
-                    DiscussionNotification n = new DiscussionNotification(e.hashCode(),e.id);
-                    if(discussionNotifications.size() > 0) {
-                        for (DiscussionNotification nn : discussionNotifications) {
-                            if (nn.idthread.equals(n.idthread)) {
-                                n.idnotification = nn.idnotification;
-                                found = true;
-                                break;
-                            }
-                        }
-                    }
-                    if(!found) {
-                        discussionNotifications.add(n);
-                    }
+                    NotificationManager nmg = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);                    
 
                     nmg.notify(n.idnotification, ncb.build());
+
+                    if(cmnotf == 2) {
+                    	break;
+                    }
                 }
             }
             cmlast = new Date().getTime();

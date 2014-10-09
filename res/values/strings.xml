@@ -176,6 +176,7 @@
     <string name="notif_dm_new">You have a new direct message</string>
     <string name="notif_dm_upd">A conversation has been updated</string>
     <string name="notif_cm_new">New comments/likes on</string>
+    <string name="notif_cms_new">New comments/likes on your discussions</string>
 
     <!-- Test -->
     <string name="test_version">1.25</string>

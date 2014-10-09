@@ -147,11 +147,13 @@
     <string-array name="pk_serv_notc_names">
         <item>Disable notifications</item>
         <item>Enable notifications</item>
+        <item>One notification for all my discussions</item>
     </string-array>
     
     <string-array name="pk_serv_notc_values">
         <item>0</item>
         <item>1</item>
+        <item>2</item>
     </string-array>
     
     <string-array name="pk_serv_comm_names">
