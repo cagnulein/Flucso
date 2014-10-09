@@ -188,7 +188,7 @@ public class FFService extends IntentService implements OnSharedPreferenceChange
             Feed data = FFAPI.client_feed(session).get_feed_updates("filter/discussions", 50, cursor_discussions, 0, 1);
             cursor_discussions = data.realtime.cursor;
             for (Entry e : data.entries) {
-            	boolean likes = (e.likes.size() > 0);
+            	int likes = 0;
             	int comments = 0;
             	if(e.comments.size() > 0) {
             		for(Comment c : e.comments) {
@@ -197,10 +197,17 @@ public class FFService extends IntentService implements OnSharedPreferenceChange
             			}
             		}
             	}
+               	if(e.likes.size() > 0) {
+            		for(Entry.Like l : e.likes) {
+            			if(l.isMine() == false) {
+            				likes++;
+            			}
+            		}
+            	}
 
-                if(likes || comments > 0) {
+                if(likes > 0 || comments > 0) {
                 	String r;
-                	if(comments > 1 || (comments == 0 && likes)) {
+                	if(comments > 1 || (comments == 0 && likes > 0)) {
                 		r = getResources().getString(R.string.notif_cm_new) + " " + e.body;
                 	} else {
                 		r = e.comments.get(0).body;
