@@ -318,7 +318,7 @@ public class MainActivity extends Activity implements OnFFReqsListener {
 			nmg.cancel(FFService.NOTIFICATION_ID); // remove from notification bar
 			return;
 		}
-        if (intent.getAction().equals(FFService.DSC_BASE_NOTIF)) {
+        if (intent.getAction().equals(FFService.ADSC_BASE_NOTIF)) {
             String fid = "filter/discussions";
             SectionItem si = session.navigation != null ? session.navigation.getSectionByFeed(fid) : null;
             if (si == null) {
@@ -331,6 +331,10 @@ public class MainActivity extends Activity implements OnFFReqsListener {
                 selectDrawerItem(si);
             else
                 openFeed(si.name, fid, null);
+            return;
+        }
+        if (intent.getAction().equals(FFService.DSC_BASE_NOTIF)) {
+            openEntry(intent.getExtras().getString("id"));
             return;
         }
 		if (intent.getAction().equals(Intent.ACTION_VIEW)) {

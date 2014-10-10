@@ -24,6 +24,7 @@ public class FFService extends IntentService implements OnSharedPreferenceChange
 	public static final String PROFILE_READY = "net.esorciccio.flucso.FFService.PROFILE_READY";
 	public static final String DM_BASE_NOTIF = "net.esorciccio.flucso.FFService.DM_BASE_NOTIF";
     public static final String DSC_BASE_NOTIF = "net.esorciccio.flucso.FFService.DSC_BASE_NOTIF";
+    public static final String ADSC_BASE_NOTIF = "net.esorciccio.flucso.FFService.ADSC_BASE_NOTIF";
 
 	public static final int NOTIFICATION_ID = 1;
 	
@@ -185,6 +186,7 @@ public class FFService extends IntentService implements OnSharedPreferenceChange
             return;
         Log.v("FFService", "checkComments()");
         try {
+            PendingIntent rpi = null;
             Feed data = FFAPI.client_feed(session).get_feed_updates("filter/discussions", 50, cursor_discussions, 0, 1);
             cursor_discussions = data.realtime.cursor;
             for (Entry e : data.entries) {
@@ -228,7 +230,9 @@ public class FFService extends IntentService implements OnSharedPreferenceChange
 	                    }
 	                    if(!found) {
 	                        discussionNotifications.add(n);
-	                    }	                	
+	                    }
+                        rpi = PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class).setAction(DSC_BASE_NOTIF).putExtra("id",e.id),
+                                PendingIntent.FLAG_UPDATE_CURRENT);
 	                } else if(cmnotf == 2) {
 	                	r = getResources().getString(R.string.notif_cms_new);
 
@@ -237,10 +241,10 @@ public class FFService extends IntentService implements OnSharedPreferenceChange
 	                	} else {
 	                		discussionNotifications.add(n);
 	                	}
+                        rpi = PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class).setAction(ADSC_BASE_NOTIF),
+                                PendingIntent.FLAG_UPDATE_CURRENT);
 	                }
 
-                    PendingIntent rpi = PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class).setAction(DSC_BASE_NOTIF),
-                            PendingIntent.FLAG_UPDATE_CURRENT);
                     NotificationCompat.Builder ncb = new NotificationCompat.Builder(this).setSmallIcon(
                             R.drawable.ic_launcher).setContentTitle(getResources().getString(R.string.app_name)).setContentText(r)
                     		.setAutoCancel(true).setContentIntent(rpi);
