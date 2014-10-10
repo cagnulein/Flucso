@@ -23,8 +23,8 @@ public class FFService extends IntentService implements OnSharedPreferenceChange
 	public static final String SERVICE_ERROR = "net.esorciccio.flucso.FFService.SERVICE_ERROR";
 	public static final String PROFILE_READY = "net.esorciccio.flucso.FFService.PROFILE_READY";
 	public static final String DM_BASE_NOTIF = "net.esorciccio.flucso.FFService.DM_BASE_NOTIF";
-    public static final String DSC_BASE_NOTIF = "net.esorciccio.flucso.FFService.DSC_BASE_NOTIF";
-    public static final String ADSC_BASE_NOTIF = "net.esorciccio.flucso.FFService.ADSC_BASE_NOTIF";
+	public static final String DSC_BASE_NOTIF = "net.esorciccio.flucso.FFService.DSC_BASE_NOTIF";
+	public static final String ADSC_BASE_NOTIF = "net.esorciccio.flucso.FFService.ADSC_BASE_NOTIF";
 
 	public static final int NOTIFICATION_ID = 1;
 	
@@ -33,16 +33,16 @@ public class FFService extends IntentService implements OnSharedPreferenceChange
 	
 	private Boolean terminated = false;
 	private String cursor_messages;
-    private String cursor_discussions;
+	private String cursor_discussions;
 	private long printv;
 	private long dmintv;
 	private long cmintv;
 	private long prlast;
 	private long dmlast;
-    private long cmlast;
+	private long cmlast;
 	private int dmnotf;
 	private int cmnotf;
-    private List<DiscussionNotification> discussionNotifications = new ArrayList<DiscussionNotification>();
+	private List<DiscussionNotification> discussionNotifications = new ArrayList<DiscussionNotification>();
 	
 	public FFService() {
 		super("FFService");
@@ -63,7 +63,7 @@ public class FFService extends IntentService implements OnSharedPreferenceChange
 		notifier = LocalBroadcastManager.getInstance(this);
 		
 		cursor_messages = session.getPrefs().getString(PK.SERV_MSGS_CURS, "");
-        cursor_discussions = session.getPrefs().getString(PK.SERV_DSCS_CURS, "");
+		cursor_discussions = session.getPrefs().getString(PK.SERV_DSCS_CURS, "");
 		printv = session.getPrefs().getInt(PK.SERV_PROF, 0);
 		dmnotf = session.getPrefs().getInt(PK.SERV_NOTF, 0);
 		dmintv = session.getPrefs().getInt(PK.SERV_MSGS, 0);
@@ -81,7 +81,7 @@ public class FFService extends IntentService implements OnSharedPreferenceChange
 					waitTime = 5000;
 					checkProfile();
 					checkMessages();
-                    checkComments();
+					checkComments();
 				}
 				try {
 					Thread.sleep(waitTime);
@@ -94,7 +94,7 @@ public class FFService extends IntentService implements OnSharedPreferenceChange
 			try {
 				SharedPreferences.Editor editor = session.getPrefs().edit();
 				editor.putString(PK.SERV_MSGS_CURS, cursor_messages);
-                editor.putString(PK.SERV_DSCS_CURS, cursor_discussions);
+				editor.putString(PK.SERV_DSCS_CURS, cursor_discussions);
 				editor.commit();
 			} catch (Exception err) {
 			}
@@ -181,87 +181,87 @@ public class FFService extends IntentService implements OnSharedPreferenceChange
 		}
 	}
 
-    private void checkComments() {
-        if (cmnotf == 0 || cmintv > (new Date().getTime() - cmlast) / (60 * 1000) % 60)
-            return;
-        Log.v("FFService", "checkComments()");
-        try {
-            PendingIntent rpi = null;
-            Feed data = FFAPI.client_feed(session).get_feed_updates("filter/discussions", 50, cursor_discussions, 0, 1);
-            cursor_discussions = data.realtime.cursor;
-            for (Entry e : data.entries) {
-            	int likes = 0;
-            	int comments = 0;
-            	if(e.comments.size() > 0) {
-            		for(Comment c : e.comments) {
-            			if(c.from.isMe() == false) {
-            				comments++;
-            			}
-            		}
-            	}
-               	if(e.likes.size() > 0) {
-            		for(Entry.Like l : e.likes) {
-            			if(l.isMine() == false) {
-            				likes++;
-            			}
-            		}
-            	}
+	private void checkComments() {
+		if (cmnotf == 0 || cmintv > (new Date().getTime() - cmlast) / (60 * 1000) % 60)
+			return;
+		Log.v("FFService", "checkComments()");
+		try {
+			PendingIntent rpi = null;
+			Feed data = FFAPI.client_feed(session).get_feed_updates("filter/discussions", 50, cursor_discussions, 0, 1);
+			cursor_discussions = data.realtime.cursor;
+			for (Entry e : data.entries) {
+				int likes = 0;
+				int comments = 0;
+				if(e.comments.size() > 0) {
+					for(Comment c : e.comments) {
+						if(c.from.isMe() == false) {
+							comments++;
+						}
+					}
+				}
+				if(e.likes.size() > 0) {
+					for(Entry.Like l : e.likes) {
+						if(l.isMine() == false) {
+							likes++;
+						}
+					}
+				}
 
-                if(likes > 0 || comments > 0) {
-                	String r = "";
-                    boolean found = false;
-                    DiscussionNotification n = new DiscussionNotification(e.hashCode(),e.id);
+				if(likes > 0 || comments > 0) {
+					String r = "";
+					boolean found = false;
+					DiscussionNotification n = new DiscussionNotification(e.hashCode(),e.id);
 
-                	if (cmnotf == 1) {
-	                	if(comments > 1 || (comments == 0 && likes > 0)) {
-	                		r = getResources().getString(R.string.notif_cm_new) + " " + e.body;
-	                	} else {
-	                		r = e.comments.get(0).body;
-	                	}
+					if (cmnotf == 1) {
+						if(comments > 1 || (comments == 0 && likes > 0)) {
+							r = getResources().getString(R.string.notif_cm_new) + " " + e.body;
+						} else {
+							r = e.comments.get(0).body;
+						}
 
-	                    if(discussionNotifications.size() > 0) {
-	                        for (DiscussionNotification nn : discussionNotifications) {
-	                            if (nn.idthread.equals(n.idthread)) {
-	                                n.idnotification = nn.idnotification;
-	                                found = true;
-	                                break;
-	                            }
-	                        }
-	                    }
-	                    if(!found) {
-	                        discussionNotifications.add(n);
-	                    }
-                        rpi = PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class).setAction(DSC_BASE_NOTIF).putExtra("id",e.id),
-                                PendingIntent.FLAG_UPDATE_CURRENT);
-	                } else if(cmnotf == 2) {
-	                	r = getResources().getString(R.string.notif_cms_new);
+						if(discussionNotifications.size() > 0) {
+							for (DiscussionNotification nn : discussionNotifications) {
+								if (nn.idthread.equals(n.idthread)) {
+									n.idnotification = nn.idnotification;
+									found = true;
+									break;
+								}
+							}
+						}
+						if(!found) {
+							discussionNotifications.add(n);
+						}
+						rpi = PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class).setAction(DSC_BASE_NOTIF).putExtra("id",e.id),
+								PendingIntent.FLAG_UPDATE_CURRENT);
+					} else if(cmnotf == 2) {
+						r = getResources().getString(R.string.notif_cms_new);
 
-	                	if(discussionNotifications.size() > 0) {
-	                		n.idnotification = discussionNotifications.get(0).idnotification;
-	                	} else {
-	                		discussionNotifications.add(n);
-	                	}
-                        rpi = PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class).setAction(ADSC_BASE_NOTIF),
-                                PendingIntent.FLAG_UPDATE_CURRENT);
-	                }
+						if(discussionNotifications.size() > 0) {
+							n.idnotification = discussionNotifications.get(0).idnotification;
+						} else {
+							discussionNotifications.add(n);
+						}
+						rpi = PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class).setAction(ADSC_BASE_NOTIF),
+								PendingIntent.FLAG_UPDATE_CURRENT);
+					}
 
-                    NotificationCompat.Builder ncb = new NotificationCompat.Builder(this).setSmallIcon(
-                            R.drawable.ic_launcher).setContentTitle(getResources().getString(R.string.app_name)).setContentText(r)
-                    		.setAutoCancel(true).setContentIntent(rpi);
-                    NotificationManager nmg = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);                    
+					NotificationCompat.Builder ncb = new NotificationCompat.Builder(this).setSmallIcon(
+							R.drawable.ic_launcher).setContentTitle(getResources().getString(R.string.app_name)).setContentText(r)
+							.setAutoCancel(true).setContentIntent(rpi);
+					NotificationManager nmg = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);                    
 
-                    nmg.notify(n.idnotification, ncb.build());
+					nmg.notify(n.idnotification, ncb.build());
 
-                    if(cmnotf == 2) {
-                    	break;
-                    }
-                }
-            }
-            cmlast = new Date().getTime();
-        } catch (Exception error) {
-            notifyError(error);
-        }
-    }
+					if(cmnotf == 2) {
+						break;
+					}
+				}
+			}
+			cmlast = new Date().getTime();
+		} catch (Exception error) {
+			notifyError(error);
+		}
+	}
 
 	@Override
 	public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
@@ -286,13 +286,13 @@ public class FFService extends IntentService implements OnSharedPreferenceChange
 		}
 	}
 
-    private class DiscussionNotification {
-        public int idnotification;
-        public String idthread;
+	private class DiscussionNotification {
+		public int idnotification;
+		public String idthread;
 
-        DiscussionNotification(int idAndroid, String idFF) {
-            idnotification = idAndroid;
-            idthread = idFF;
-        }
-    }
+		DiscussionNotification(int idAndroid, String idFF) {
+			idnotification = idAndroid;
+			idthread = idFF;
+		}
+	}
 }
