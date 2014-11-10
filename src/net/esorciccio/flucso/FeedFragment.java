@@ -14,10 +14,13 @@ import retrofit.RetrofitError;
 import retrofit.client.Response;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
+import android.database.DataSetObserver;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.text.TextUtils;
@@ -64,8 +67,7 @@ public class FeedFragment extends BaseFragment implements SwipeRefreshLayout.OnR
 	private LinearLayout llFooter;
 	private ImageView imgGoUp;
 	private TextView txtFooter;
-	private MenuItem miPostF;
-	private MenuItem miPostU;
+	private MenuItem miWrite;
 	private MenuItem miAutoU;
 	private MenuItem miPause;
 	private MenuItem miSubsc;
@@ -95,6 +97,13 @@ public class FeedFragment extends BaseFragment implements SwipeRefreshLayout.OnR
 		setHasOptionsMenu(true);
 		
 		adapter = new FeedAdapter(getActivity(), this);
+		adapter.registerDataSetObserver(new DataSetObserver() {
+			@Override
+			public void onChanged() {
+				if (fquery == "")
+					session.cachedFeed = adapter.feed;
+			}
+		});
 		
 		Bundle args = getArguments();
 		fid = args.getString("id");
@@ -148,22 +157,30 @@ public class FeedFragment extends BaseFragment implements SwipeRefreshLayout.OnR
 		lvFeed.setOnScrollListener(new OnScrollListener() {
 			@Override
 			public void onScrollStateChanged(AbsListView view, int scrollState) {
-				// nothing to do.
+				switch (scrollState) {
+					case OnScrollListener.SCROLL_STATE_IDLE:
+						imgGoUp.setAlpha((float) 1.0);
+						break;
+					case OnScrollListener.SCROLL_STATE_TOUCH_SCROLL:
+						imgGoUp.setAlpha((float) 0.5);
+						break;
+					case OnScrollListener.SCROLL_STATE_FLING:
+						imgGoUp.setAlpha((float) 0.2);
+						break;
+				}
 			}
 			@Override
 			public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount) {
-				if (timer != null && extender == null && adapter.feed != null) {
-					if (firstVisibleItem <= 0)
-						imgGoUp.setVisibility(View.GONE);
-					else
-						imgGoUp.setVisibility(View.VISIBLE);
-					if (firstVisibleItem + visibleItemCount >= totalItemCount && lastext != 0) {
+				if (adapter.feed == null)
+					return;
+				imgGoUp.setVisibility(firstVisibleItem > 0 ? View.VISIBLE : View.GONE);
+				if (firstVisibleItem + visibleItemCount >= totalItemCount && lastext != 0) {
+					if (extender == null) {
 						txtFooter.setText(R.string.fetching_wait);
-						extender = new ExtenderTask();
-						timer.schedule(extender, 200);
-					} else
-						txtFooter.setText(R.string.fetching_none);
-				}
+						extender = (ExtenderTask) new ExtenderTask().execute();
+					}
+				} else
+					txtFooter.setText(R.string.fetching_none);
 			}
 		});
 		
@@ -182,8 +199,6 @@ public class FeedFragment extends BaseFragment implements SwipeRefreshLayout.OnR
 	public void onActivityCreated(Bundle savedInstanceState) {
 		super.onActivityCreated(savedInstanceState);
 		
-		Log.v("feed", this.getClass().getName() + ".onActivityCreated");
-		
 		if (savedInstanceState == null)
 			return;
 
@@ -196,15 +211,11 @@ public class FeedFragment extends BaseFragment implements SwipeRefreshLayout.OnR
 	@Override
 	public void onResume() {
 		super.onResume();
-		
-		//Log.v("stack", this.getClass().getName() + ".onResume");
 	}
 	
 	@Override
 	public void onPause() {
 		super.onPause();
-		
-		//Log.v("stack", this.getClass().getName() + ".onPause");
 		
 		pauseUpdates(false);
 	}
@@ -212,8 +223,6 @@ public class FeedFragment extends BaseFragment implements SwipeRefreshLayout.OnR
 	@Override
 	public void onSaveInstanceState(Bundle outState) {
 		super.onSaveInstanceState(outState);
-		
-		//Log.v("feed", this.getClass().getName() + ".onSaveInstanceState");
 		
 		outState.putString("eid", lvFeed != null && adapter.feed != null && adapter.feed.entries.size() > 0 ?
 			adapter.getItem(lvFeed.getFirstVisiblePosition()).id : "");
@@ -227,8 +236,7 @@ public class FeedFragment extends BaseFragment implements SwipeRefreshLayout.OnR
 	public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
 		inflater.inflate(R.menu.feed, menu);
 		
-		miPostF = menu.findItem(R.id.action_feed_post);
-		miPostU = menu.findItem(R.id.action_feed_dm);
+		miWrite = menu.findItem(R.id.action_feed_post);
 		miAutoU = menu.findItem(R.id.action_feed_auto);
 		miPause = menu.findItem(R.id.action_feed_pause);
 		miSubsc = menu.findItem(R.id.action_feed_subscr);
@@ -236,25 +244,12 @@ public class FeedFragment extends BaseFragment implements SwipeRefreshLayout.OnR
 	
 	@Override
 	public void onPrepareOptionsMenu(Menu menu) {
-		if (adapter.feed == null) {
-			miPostU.setVisible(false);
-			miAutoU.setVisible(false);
-			miPause.setVisible(false);
-			miSubsc.setVisible(false);
-		} else {
-			miPostU.setVisible(adapter.feed.canDM());
-			miSubsc.setVisible(adapter.feed.canSetSubscriptions());
-		}
-		checkAutoUpdMenuItems();
+		checkMenu();
 	}
 	
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
-		if (item == miPostF) {
-			mContainer.openPostNew(new String[] { session.getUsername(), fid }, null, null, null);
-			return true;
-		}
-		if (item == miPostU) {
+		if (item == miWrite) {
 			mContainer.openPostNew(new String[] { fid }, null, null, null);
 			return true;
 		}
@@ -296,7 +291,7 @@ public class FeedFragment extends BaseFragment implements SwipeRefreshLayout.OnR
 	
 	@Override
 	public void onRefresh() {
-		checkAutoUpdMenuItems();
+		checkMenu();
 		if ((updater != null && updater.scheduledExecutionTime() >= new Date().getTime()) ||
 			(loader != null && loader.scheduledExecutionTime() >= new Date().getTime()))
 			return;
@@ -352,9 +347,25 @@ public class FeedFragment extends BaseFragment implements SwipeRefreshLayout.OnR
 	
 	@Override
 	protected void initFragment() {
+		if (adapter != null && session.cachedFeed != null && session.cachedFeed.isIt(fid)) {
+			adapter.feed = session.cachedFeed;
+			adapter.notifyDataSetChanged();
+			cursor = adapter.feed.realtime.cursor;
+		}
 		if (adapter != null && adapter.feed != null)
 			adapter.feed.setLocalHide();
 		resumeUpdates(false, false);
+	}
+	
+	private void checkMenu() {
+		if (miWrite == null || miAutoU == null || miPause == null || miSubsc == null)
+			return;
+		boolean fl = adapter != null && adapter.feed != null;
+		miWrite.setVisible(fl);
+		miWrite.setIcon(fl && adapter.feed.canDM() ? R.drawable.menu_dm : R.drawable.menu_post);
+		miAutoU.setVisible(fl && !isAutoUpdGoing());
+		miPause.setVisible(fl && !miAutoU.isVisible());
+		miSubsc.setVisible(fl && adapter.feed.canSetSubscriptions());
 	}
 	
 	private boolean isAutoUpdSet() {
@@ -366,17 +377,17 @@ public class FeedFragment extends BaseFragment implements SwipeRefreshLayout.OnR
 	}
 	
 	private void pauseUpdates(boolean showHourglass) {
-		Log.v("stack", this.getClass().getName() + ".pauseUpdates");
+		Log.v(logTag(), "pauseUpdates");
 		paused = true;
 		if (timer != null)
 			timer.cancel();
-		checkAutoUpdMenuItems();
+		checkMenu();
 		if (showHourglass)
 			getActivity().setProgressBarIndeterminateVisibility(true);
 	}
 	
 	private void resumeUpdates(boolean removeHourglass, boolean reload) {
-		Log.v("stack", this.getClass().getName() + ".resumeUpdates");
+		Log.v(logTag(), "resumeUpdates");
 		paused = false;
 		reload = reload || adapter.feed == null || TextUtils.isEmpty(cursor);
 		if (timer != null)
@@ -388,16 +399,9 @@ public class FeedFragment extends BaseFragment implements SwipeRefreshLayout.OnR
 			timer.schedule(loader, 500);
 		if (isAutoUpdGoing())
 			timer.schedule(updater, reload ? 30000 : 500, 30000);
-		checkAutoUpdMenuItems();
+		checkMenu();
 		if (removeHourglass)
 			getActivity().setProgressBarIndeterminateVisibility(false);
-	}
-	
-	private void checkAutoUpdMenuItems() {
-		if (miAutoU != null && miPause != null) {
-			miAutoU.setVisible(!isAutoUpdGoing());
-			miPause.setVisible(!miAutoU.isVisible());
-		}
 	}
 	
 	private void doLike(final Entry entry) {
@@ -521,7 +525,7 @@ public class FeedFragment extends BaseFragment implements SwipeRefreshLayout.OnR
 			final Activity context = getActivity();
 			try {
 				srl.setRefreshing(true);
-				Log.v("test", "(loader) fetching " + Integer.toString(amount) + " items...");
+				Log.v(logTag(), "(loader) fetching " + Integer.toString(amount) + " items...");
 				// According to API documentation, when cursor="" we should get all the entries, but we don't. FF
 				// returns an empty feed (with the cursor we'll use for the next call), so we have to make a call
 				// for a complete feed anyway.
@@ -548,7 +552,7 @@ public class FeedFragment extends BaseFragment implements SwipeRefreshLayout.OnR
 						int i = TextUtils.isEmpty(eid) ? 0 : adapter.feed.indexOf(eid);
 						lvFeed.smoothScrollToPosition(i > 0 ? i : 0);
 						context.setTitle(fname);
-						checkAutoUpdMenuItems();
+						checkMenu();
 						lastext = -1; // reset the extender task.
 						eid = null; // reset the saved pos.
 					}
@@ -591,7 +595,7 @@ public class FeedFragment extends BaseFragment implements SwipeRefreshLayout.OnR
 		public void run() {
 			final Activity context = getActivity();
 			if (TextUtils.isEmpty(cursor)) {
-				Log.v("test", "(updater) invalid cursor, rescheduling...");
+				Log.v(logTag(), "invalid cursor, rescheduling...");
 				context.runOnUiThread(new Runnable() {
 					@Override
 					public void run() {
@@ -602,7 +606,7 @@ public class FeedFragment extends BaseFragment implements SwipeRefreshLayout.OnR
 				return;
 			}
 			try {
-				Log.v("test", "(updater) fetching " + Integer.toString(amount) + " items...");
+				Log.v(logTag(), "(updater) fetching " + Integer.toString(amount) + " items...");
 				final Feed updates;
 				if (TextUtils.isEmpty(fquery))
 					updates = FFAPI.client_feed(session).get_feed_updates(fid, amount, cursor, 0, 1);
@@ -621,16 +625,13 @@ public class FeedFragment extends BaseFragment implements SwipeRefreshLayout.OnR
 						int offset = lvFeed.getFirstVisiblePosition();
 						adapter.notifyDataSetChanged();
 						if (added > 0) {
-							
-							Log.v("feed", "updater move: " + Integer.toString(added + offset));
-							
 							lvFeed.smoothScrollToPosition(added + offset);
 							if (imgGoUp.getVisibility() == View.VISIBLE)
 								imgGoUp.startAnimation(blink);
 							lastext = -1; // reset the extender task.
 						}
 						context.setTitle(fname);
-						checkAutoUpdMenuItems();
+						checkMenu();
 					}
 				});
 			} catch (Exception error) {
@@ -650,48 +651,47 @@ public class FeedFragment extends BaseFragment implements SwipeRefreshLayout.OnR
 		}
 	}
 	
-	private class ExtenderTask extends TimerTask {
+	private class ExtenderTask extends AsyncTask<Void, Void, Feed> {
+		private String error = null;
+        @Override
+        protected void onPreExecute() {
+        	srl.setRefreshing(true);
+        	Log.v(logTag(), "(extender) fetching more items starting from " + Integer.toString(amount + 1) + "...");
+        }
 		@Override
-		public void run() {
-			final Activity context = getActivity();
+		protected Feed doInBackground(Void... params) {
 			try {
-				Log.v("test", "(extender) fetching more items starting from " + Integer.toString(amount + 1) + "...");
-				final Feed olders;
-				if (TextUtils.isEmpty(fquery))
-					olders = FFAPI.client_feed(session).get_feed_normal(fid, amount + 1, AMOUNT_INCR);
-				else
-					olders = FFAPI.client_feed(session).get_search_normal(fquery, amount + 1, AMOUNT_INCR);
-				Log.v("test", "got " + Integer.toString(olders.entries.size()));
-				context.runOnUiThread(new Runnable() {
-					@Override
-					public void run() {
-						if (!FeedFragment.this.isVisible() || FeedFragment.this.isRemoving())
-							return;
-						lastext = adapter.feed.append(olders);
-						amount = adapter.feed.entries.size();
-						Log.v("test", "appended " + Integer.toString(lastext));
-						int y = lvFeed.getScrollY();
-						adapter.notifyDataSetChanged();
-						lvFeed.scrollTo(0, y);
-						extender = null;
-						Log.v("test", "Extender deleted.");
-						checkAutoUpdMenuItems();
-					}
-				});
-			} catch (Exception error) {
-				final String text = error instanceof RetrofitError ? Commons.retrofitErrorText((RetrofitError) error)
-					: error.getMessage();
-				context.runOnUiThread(new Runnable() {
-					@Override
-					public void run() {
-						if (!FeedFragment.this.isVisible() || FeedFragment.this.isRemoving())
-							return;
-						srl.setRefreshing(false);
-						new AlertDialog.Builder(context).setTitle("ExtenderTask").setMessage(text).setIcon(
-							android.R.drawable.ic_dialog_alert).show();
-					}
-				});
+				return TextUtils.isEmpty(fquery) ?
+					FFAPI.client_feed(session).get_feed_normal(fid, amount + 1, AMOUNT_INCR) :
+					FFAPI.client_feed(session).get_search_normal(fquery, amount + 1, AMOUNT_INCR);
+			} catch (Exception e) {
+				error = e instanceof RetrofitError ? Commons.retrofitErrorText((RetrofitError) e) : e.getMessage();
+				return null;
 			}
 		}
+        @Override
+        protected void onPostExecute(Feed result) {
+			Context context = getActivity();
+			if (context == null || !isAdded() || isDetached() || !isVisible() || isRemoving())
+				return;
+			try {
+				srl.setRefreshing(false);
+	        	if (!TextUtils.isEmpty(error))
+	        		new AlertDialog.Builder(context).setTitle("ExtenderTask").setMessage(error).setIcon(
+						android.R.drawable.ic_dialog_alert).show();
+	        	else {
+	        		Log.v(logTag(), "got " + Integer.toString(result.entries.size()));
+	        		lastext = adapter.feed.append(result);
+					amount = adapter.feed.entries.size();
+					Log.v(logTag(), "appended " + Integer.toString(lastext));
+					int y = lvFeed.getScrollY();
+					adapter.notifyDataSetChanged();
+					lvFeed.scrollTo(0, y);
+					checkMenu();
+	        	}
+			} finally {
+				extender = null;
+			}
+        }
 	}
 }

@@ -12,15 +12,17 @@
         android:id="@+id/img_comm_from"
         android:layout_width="25dp"
         android:layout_height="25dp"
-        android:layout_marginEnd="8dp"
         android:contentDescription="@string/empty_text"
         android:src="@drawable/nomugshot" />
 
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginLeft="8dp"
         android:layout_weight="1"
-        android:orientation="vertical" >
+        android:orientation="vertical"
+        android:paddingEnd="8dp"
+        android:paddingStart="0dp" >
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -43,8 +45,10 @@
 
             <TextView
                 android:id="@+id/txt_comm_time"
-                android:layout_width="wrap_content"
+                android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
                 android:text="@string/test_time_1"
                 android:textColor="@android:color/darker_gray" />
 
@@ -72,8 +76,8 @@
 
     <ImageView
         android:id="@+id/img_comm_popup"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="25dp"
+        android:layout_height="25dp"
         android:contentDescription="@string/empty_text"
         android:src="@drawable/btn_popup" />
 

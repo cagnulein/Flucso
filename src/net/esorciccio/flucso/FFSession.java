@@ -1,11 +1,13 @@
 package net.esorciccio.flucso;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Locale;
 
 import net.esorciccio.flucso.Commons.PK;
 import net.esorciccio.flucso.FFAPI.Entry;
+import net.esorciccio.flucso.FFAPI.Feed;
 import net.esorciccio.flucso.FFAPI.FeedInfo;
 import net.esorciccio.flucso.FFAPI.FeedList;
 import net.esorciccio.flucso.FFAPI.IdentItem;
@@ -49,16 +51,17 @@ public final class FFSession implements OnSharedPreferenceChangeListener {
 		if (TextUtils.isEmpty(chk))
 			Entry.bWords.clear();
 		else
-			Entry.bWords = Arrays.asList(chk.replaceAll("^[,\\s]+", "").split("(?:,\\s*)+"));
+			Entry.bWords = new ArrayList<String>(Arrays.asList(chk.replaceAll("^[,\\s]+", "").split("(?:,\\s*)+")));
 		chk = prefs.getString(PK.FEED_HBF, "").toLowerCase(Locale.getDefault()).trim();
 		if (TextUtils.isEmpty(chk))
 			Entry.bFeeds.clear();
 		else
-			Entry.bFeeds = Arrays.asList(chk.replaceAll("^[,\\s]+", "").split("(?:,\\s*)+"));
+			Entry.bFeeds = new ArrayList<String>(Arrays.asList(chk.replaceAll("^[,\\s]+", "").split("(?:,\\s*)+")));
 	}
 	
 	public FeedInfo profile;
 	public FeedList navigation;
+	public Feed cachedFeed;
 	public Entry cachedEntry;
 	
 	public SharedPreferences getPrefs() {

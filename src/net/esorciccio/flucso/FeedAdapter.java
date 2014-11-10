@@ -6,6 +6,7 @@ import net.esorciccio.flucso.FFAPI.Entry.Comment;
 import net.esorciccio.flucso.FFAPI.Feed;
 import android.content.Context;
 import android.text.Html;
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -101,8 +102,8 @@ public class FeedAdapter extends BaseAdapter {
 		if (entry.hidden || entry.banned) {
 			vh.lNormal.setVisibility(View.GONE);
 			vh.lHidden.setVisibility(View.VISIBLE);
-			vh.txtFromH.setCompoundDrawablesWithIntrinsicBounds(entry.hidden ? R.drawable.ic_action_discard :
-				R.drawable.ic_action_labels, 0, 0, 0);
+			vh.txtFromH.setCompoundDrawablesWithIntrinsicBounds(entry.hidden ? R.drawable.ic_action_desktop :
+				R.drawable.ic_action_phone, 0, 0, 0);
 			vh.txtFromH.setText(entry.from.getName());
 			vh.txtTimeH.setText(entry.getFuzzyTime());
 			return view;
@@ -127,7 +128,12 @@ public class FeedAdapter extends BaseAdapter {
 			vh.txtTo.setVisibility(View.VISIBLE);
 		}
 		
-		vh.txtTime.setText(entry.getFuzzyTime());
+		String tl = entry.getFuzzyTime();
+		if (entry.via != null && !TextUtils.isEmpty(entry.via.name.trim()))
+			tl += new StringBuilder().append(" ").append(context.getString(R.string.source_prefix)).append(" ").append(
+				entry.via.name.trim()).toString();
+		vh.txtTime.setText(tl);
+		
 		vh.txtHide.setVisibility(entry.canHide() ? View.VISIBLE : View.GONE);
 		vh.txtBody.setText(Html.fromHtml(entry.body));
 
